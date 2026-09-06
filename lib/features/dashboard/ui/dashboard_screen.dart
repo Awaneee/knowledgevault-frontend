@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../../intents/data/models/intent_category_response.dart';
@@ -64,10 +65,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('KnowledgeVault'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
+            padding: EdgeInsets.zero,
+            icon: UserAvatar(user: user, radius: 16),
             tooltip: 'Profile',
             onPressed: () => context.push('/profile'),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: RefreshIndicator(
@@ -86,12 +89,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$greeting${user != null ? ', ${user.username}' : ''}!',
-                    style: tt.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onPrimaryContainer,
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.push('/profile'),
+                        child: UserAvatar(user: user, radius: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '$greeting${user != null ? ', ${user.username}' : ''}!',
+                          style: tt.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: cs.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
