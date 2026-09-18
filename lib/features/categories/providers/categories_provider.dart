@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/cache/local_cache.dart';
 import '../data/categories_repository.dart';
 import '../data/models/category_response.dart';
@@ -18,11 +19,17 @@ class CategoriesNotifier extends AsyncNotifier<List<CategoryResponse>> {
       state = AsyncData(_rowsToCategories(cachedRows));
     }
 
-    final categories =
-        await ref.read(categoriesRepositoryProvider).listCategories();
-    await db.cacheCategoryRows(
-        categories.map((c) => {'id': c.id, 'name': c.name}).toList());
-    return categories;
+    try {
+      final categories =
+          await ref.read(categoriesRepositoryProvider).listCategories();
+      await db.cacheCategoryRows(
+          categories.map((c) => {'id': c.id, 'name': c.name}).toList());
+      return categories;
+    } on NetworkException {
+      // Offline: fall back to the cache; only fail if it is empty.
+      if (cachedRows.isNotEmpty) return _rowsToCategories(cachedRows);
+      rethrow;
+    }
   }
 
   Future<CategoryResponse> createCategory(String name) async {

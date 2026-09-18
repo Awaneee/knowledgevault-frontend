@@ -2,12 +2,13 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final _connectivityProvider =
+/// Emits the device's connectivity on every change. Overridable in tests.
+final connectivityProvider =
     StreamProvider<List<ConnectivityResult>>((ref) {
   return Connectivity().onConnectivityChanged;
 });
 
-bool _isOffline(List<ConnectivityResult> results) =>
+bool isOffline(List<ConnectivityResult> results) =>
     results.isEmpty || results.every((r) => r == ConnectivityResult.none);
 
 /// Wraps [child] and shows a persistent [MaterialBanner] when the device
@@ -20,13 +21,13 @@ class ConnectivityBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AsyncValue<List<ConnectivityResult>>>(
-      _connectivityProvider,
+      connectivityProvider,
       (previous, next) {
         final messenger = ScaffoldMessenger.of(context);
         final wasOffline = previous?.valueOrNull != null &&
-            _isOffline(previous!.valueOrNull!);
+            isOffline(previous!.valueOrNull!);
         final isNowOffline =
-            next.valueOrNull != null && _isOffline(next.valueOrNull!);
+            next.valueOrNull != null && isOffline(next.valueOrNull!);
 
         if (!wasOffline && isNowOffline) {
           messenger.showMaterialBanner(

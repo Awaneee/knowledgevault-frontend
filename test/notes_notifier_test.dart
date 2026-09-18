@@ -1,8 +1,10 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:knowledgevault/core/api/api_client.dart';
 import 'package:knowledgevault/core/api/api_exceptions.dart';
 import 'package:knowledgevault/core/cache/local_cache.dart';
+import 'package:knowledgevault/core/connectivity/connectivity_banner.dart';
 import 'package:knowledgevault/features/notes/data/models/note_create_response.dart';
 import 'package:knowledgevault/features/notes/data/models/note_response.dart';
 import 'package:knowledgevault/features/notes/data/notes_repository.dart';
@@ -36,6 +38,10 @@ ProviderContainer _makeContainer(MockNotesRepository repo) {
     overrides: [
       notesRepositoryProvider.overrideWithValue(repo),
       appDatabaseProvider.overrideWithValue(db),
+      // The real provider needs the connectivity plugin, absent in unit tests.
+      connectivityProvider.overrideWith(
+        (ref) => const Stream<List<ConnectivityResult>>.empty(),
+      ),
     ],
   );
 }

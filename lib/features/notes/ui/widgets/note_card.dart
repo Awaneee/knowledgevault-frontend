@@ -58,6 +58,19 @@ class NoteCard extends StatelessWidget {
                       color: theme.colorScheme.outline,
                     ),
                   ),
+                  if (note.id < 0) ...[
+                    // Written offline; not on the server yet.
+                    const SizedBox(width: 8),
+                    Icon(Icons.cloud_off_outlined,
+                        size: 14, color: theme.colorScheme.outline),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Waiting to sync',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
                   if (categoryName != null) ...[
                     const SizedBox(width: 8),
                     Container(

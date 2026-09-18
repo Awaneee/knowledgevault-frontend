@@ -39,6 +39,28 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets('NoteCard flags a note that has not synced yet', (tester) async {
+    final pending = NoteResponse(
+      id: -3,
+      title: 'Written offline',
+      userId: 42,
+      createdAt: DateTime.now(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: NoteCard(note: pending, onTap: () {})),
+      ),
+    );
+    expect(find.text('Waiting to sync'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: NoteCard(note: note, onTap: () {})),
+      ),
+    );
+    expect(find.text('Waiting to sync'), findsNothing);
+  });
+
   testWidgets('NoteCard shows category chip when categoryName provided',
       (tester) async {
     await tester.pumpWidget(

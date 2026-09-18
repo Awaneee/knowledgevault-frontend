@@ -33,7 +33,18 @@ class _CreateNoteScreenState extends ConsumerState<CreateNoteScreen> {
     try {
       final response =
           await ref.read(notesProvider.notifier).createNote(content);
-      if (mounted) context.go('/notes/${response.id}');
+      if (!mounted) return;
+      if (response == null) {
+        // Offline: the note is queued and will sync when the network is back.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saved offline — it will sync when you\'re back online.'),
+          ),
+        );
+        context.go('/notes');
+      } else {
+        context.go('/notes/${response.id}');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -90,7 +90,18 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         child: NoteCard(
                           note: note,
                           categoryName: category?.name,
-                          onTap: () => context.push('/notes/${note.id}'),
+                          onTap: () {
+                            if (isPendingNoteId(note.id)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Waiting to sync — open it once you\'re back online.'),
+                                ),
+                              );
+                              return;
+                            }
+                            context.push('/notes/${note.id}');
+                          },
                         ),
                       );
                     },
