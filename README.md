@@ -11,7 +11,7 @@
 ## Highlights
 
 - **Streaming markdown answers with tappable citations.** SSE token stream renders as proper markdown (headings, code, bullets) via `flutter_markdown`. Inline `[N]` refs auto-rewrite to markdown links; tapping opens the source note in a bottom sheet.
-- **Offline-first cache with optimistic UI.** Notes and categories cached in a `drift` (SQLite) local database — the app opens instantly with last-known data while a network refresh runs in the background. Category changes and deletes update state immediately, roll back on failure.
+- **Offline-first cache with optimistic UI.** Notes, categories and the signed-in profile are cached in an on-disk `drift` (SQLite) database that survives restarts — the app opens instantly (even with no network) on last-known data while a refresh runs in the background. Notes written offline are queued, shown as "Waiting to sync", and sent in order when the connection returns. Category changes and deletes update state immediately and roll back on failure.
 - **Live categorisation status.** Dashboard shows recent notes with per-note status chips (`Organizing…` / category name / `Failed`). Auto-polls the backend every 4 s while any note is still processing, then stops.
 - **Manual category override.** Long-press or tap the category row on a note to open a searchable picker; typing a novel name reveals a **Create "…"** button. Every override is sent to the backend and logged as classifier feedback.
 - **Full auth flow.** Register → login → JWT-secured requests via a Dio interceptor. Forgot-password uses a 6-digit code emailed by the backend, entered in-app, no deep-linking required.
@@ -42,7 +42,7 @@ UI (features/*/ui)
 Repository layer (features/*/data)
     │  Dio + AuthInterceptor + ErrorHandler
     ▼
-REST API  ←→  drift local cache (offline reads, optimistic writes)
+REST API  ←→  drift local cache (offline reads, offline write queue, optimistic writes)
 ```
 
 - **Riverpod** for reactive state (AsyncNotifier + families for `noteDetail(id)`, `relatedNotes(id)`).
