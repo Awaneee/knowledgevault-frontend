@@ -51,9 +51,9 @@ class AskNotifier extends AsyncNotifier<AskResponse?> {
 
 // ── Streaming helper ──────────────────────────────────────────────────────────
 
-/// Returns the raw [Stream<String>] from the SSE endpoint.
+/// Returns the raw [Stream<AskStreamEvent>] from the SSE endpoint.
 /// Consumed directly in [AskScreen] via a [StreamSubscription].
-Stream<String> askStream(AskRepository repo, String question) =>
+Stream<AskStreamEvent> askStream(AskRepository repo, String question) =>
     repo.streamAsk(question);
 
 // ── Re-export for convenience ─────────────────────────────────────────────────

@@ -21,14 +21,12 @@ class AnswerBubble extends StatelessWidget {
   final AskResponse response;
   final VoidCallback? onRegenerate;
 
-  static final _citationPattern = RegExp(r'\[(\d+)\]');
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final citationRefs = {for (final c in response.citations) c.ref};
-    final markdown = _linkifyCitations(response.answer, citationRefs);
+    final markdown = linkifyCitations(response.answer, citationRefs);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
@@ -68,59 +66,17 @@ class AnswerBubble extends StatelessWidget {
               data: markdown,
               selectable: true,
               styleSheet: mdStyleFor(context),
-              onTapLink: (text, href, title) {
-                if (href != null && href.startsWith('cite://')) {
-                  final n = int.tryParse(href.substring(7));
-                  Citation? citation;
-                  for (final c in response.citations) {
-                    if (c.ref == n) {
-                      citation = c;
-                      break;
-                    }
-                  }
-                  if (citation != null) showCitationSheet(context, citation);
-                }
-              },
+              onTapLink: (text, href, title) =>
+                  openCitationLink(context, href, response.citations),
             ),
           ),
           if (response.citations.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Divider(color: cs.outlineVariant),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text('Sources',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: response.citations
-                    .map((c) => ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: Text('[${c.ref}] ${c.noteTitle}',
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                          onPressed: () => showCitationSheet(context, c),
-                        ))
-                    .toList(),
-              ),
-            ),
+            CitationSources(citations: response.citations),
           ],
         ],
       ),
     );
-  }
-
-  static String _linkifyCitations(String answer, Set<int> validRefs) {
-    return answer.replaceAllMapped(_citationPattern, (m) {
-      final n = int.tryParse(m.group(1) ?? '');
-      if (n == null || !validRefs.contains(n)) return m.group(0)!;
-      return '[\\[$n\\]](cite://$n)';
-    });
   }
 
   static Future<void> _copyToClipboard(
@@ -134,6 +90,73 @@ class AnswerBubble extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+final _citationPattern = RegExp(r'\[(\d+)\]');
+
+/// Rewrites `[N]` markers whose N is in [validRefs] into tappable
+/// `cite://N` markdown links; other markers are left as plain text.
+String linkifyCitations(String answer, Set<int> validRefs) {
+  return answer.replaceAllMapped(_citationPattern, (m) {
+    final n = int.tryParse(m.group(1) ?? '');
+    if (n == null || !validRefs.contains(n)) return m.group(0)!;
+    return '[\\[$n\\]](cite://$n)';
+  });
+}
+
+/// Finds the citation for a `cite://N` link href and opens its sheet.
+void openCitationLink(
+    BuildContext context, String? href, List<Citation> citations) {
+  if (href == null || !href.startsWith('cite://')) return;
+  final n = int.tryParse(href.substring(7));
+  for (final c in citations) {
+    if (c.ref == n) {
+      showCitationSheet(context, c);
+      return;
+    }
+  }
+}
+
+/// "Sources" label plus one tappable chip per citation.
+class CitationSources extends StatelessWidget {
+  const CitationSources({super.key, required this.citations});
+
+  final List<Citation> citations;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Divider(color: cs.outlineVariant),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Text('Sources',
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: cs.onSurfaceVariant)),
+        ),
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: citations
+                .map((c) => ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('[${c.ref}] ${c.noteTitle}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      onPressed: () => showCitationSheet(context, c),
+                    ))
+                .toList(),
+          ),
+        ),
+      ],
+    );
   }
 }
 

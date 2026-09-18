@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/widgets/error_view.dart';
 import '../data/ask_repository.dart';
+import '../data/models/citation.dart';
 import '../providers/ask_provider.dart';
 import 'widgets/answer_bubble.dart';
 import 'widgets/stream_answer_view.dart';
@@ -26,8 +27,9 @@ class _AskScreenState extends ConsumerState<AskScreen> {
   String? _lastQuestion;
 
   // Streaming state
-  StreamSubscription<String>? _streamSub;
+  StreamSubscription<AskStreamEvent>? _streamSub;
   String _streamedText = '';
+  List<Citation> _streamCitations = const [];
   bool _isStreaming = false;
 
   @override
@@ -50,6 +52,7 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     setState(() {
       _loading = true;
       _streamedText = '';
+      _streamCitations = const [];
       _isStreaming = false;
     });
 
@@ -84,8 +87,16 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     final repo = ref.read(askRepositoryProvider);
 
     _streamSub = repo.streamAsk(question).listen(
-      (token) {
-        if (mounted) setState(() => _streamedText += token);
+      (event) {
+        if (!mounted) return;
+        setState(() {
+          switch (event) {
+            case AskToken(:final text):
+              _streamedText += text;
+            case AskCitations(:final citations):
+              _streamCitations = citations;
+          }
+        });
       },
       onDone: () {
         if (mounted) {
@@ -126,6 +137,7 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     ref.read(askProvider.notifier).clear();
     setState(() {
       _streamedText = '';
+      _streamCitations = const [];
       _isStreaming = false;
       _loading = false;
     });
@@ -165,6 +177,7 @@ class _AskScreenState extends ConsumerState<AskScreen> {
                 ? _AnswerArea(
                     mode: mode,
                     streamedText: _streamedText,
+                    streamCitations: _streamCitations,
                     isStreaming: _isStreaming,
                     askAsync: askAsync,
                     onGetFullAnswer: _streamedText.isNotEmpty
@@ -195,6 +208,7 @@ class _AnswerArea extends StatelessWidget {
   const _AnswerArea({
     required this.mode,
     required this.streamedText,
+    required this.streamCitations,
     required this.isStreaming,
     required this.askAsync,
     this.onGetFullAnswer,
@@ -204,6 +218,7 @@ class _AnswerArea extends StatelessWidget {
 
   final AskMode mode;
   final String streamedText;
+  final List<Citation> streamCitations;
   final bool isStreaming;
   final AsyncValue<dynamic> askAsync;
   final VoidCallback? onGetFullAnswer;
@@ -219,6 +234,7 @@ class _AnswerArea extends StatelessWidget {
         if (mode == AskMode.streaming && (streamedText.isNotEmpty || isStreaming)) ...[
           StreamAnswerView(
             text: streamedText,
+            citations: streamCitations,
             isStreaming: isStreaming,
             onStop: onStop,
           ),

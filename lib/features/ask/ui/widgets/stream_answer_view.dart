@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import 'answer_bubble.dart' show mdStyleFor;
+import '../../data/models/citation.dart';
+import 'answer_bubble.dart'
+    show CitationSources, linkifyCitations, mdStyleFor, openCitationLink;
 
 /// Displays a progressively-built answer string from SSE tokens.
 ///
@@ -14,11 +16,16 @@ class StreamAnswerView extends StatelessWidget {
     required this.text,
     required this.isStreaming,
     this.onStop,
+    this.citations = const [],
   });
 
   final String text;
   final bool isStreaming;
   final VoidCallback? onStop;
+
+  /// Sent by the server after the last token; empty until then (and when the
+  /// answer cited nothing).
+  final List<Citation> citations;
 
   @override
   Widget build(BuildContext context) {
@@ -77,11 +84,18 @@ class StreamAnswerView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: MarkdownBody(
-                data: text,
+                data: linkifyCitations(
+                    text, {for (final c in citations) c.ref}),
                 selectable: true,
                 styleSheet: mdStyleFor(context),
+                onTapLink: (text, href, title) =>
+                    openCitationLink(context, href, citations),
               ),
             ),
+          if (citations.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            CitationSources(citations: citations),
+          ],
           if (isStreaming && text.isNotEmpty) ...[
             const SizedBox(height: 10),
             Padding(

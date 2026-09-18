@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/error/error_handler.dart';
 import 'models/ask_request.dart';
 import 'models/ask_response.dart';
+import 'models/citation.dart';
 
 final askRepositoryProvider = Provider<AskRepository>((ref) {
   return AskRepository(ref.read(apiClientProvider).dio);
@@ -20,6 +22,23 @@ class AskStreamException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// One decoded item from the `/ask/stream` SSE stream.
+sealed class AskStreamEvent {
+  const AskStreamEvent();
+}
+
+/// A fragment of answer text, whitespace preserved.
+class AskToken extends AskStreamEvent {
+  const AskToken(this.text);
+  final String text;
+}
+
+/// The resolved citations, sent once after the last token.
+class AskCitations extends AskStreamEvent {
+  const AskCitations(this.citations);
+  final List<Citation> citations;
 }
 
 class AskRepository {
@@ -43,11 +62,12 @@ class AskRepository {
 
   /// SSE streaming response — POST /ask/stream
   ///
-  /// Yields answer fragments as they arrive, with whitespace and newlines
-  /// preserved so the accumulated text still renders as markdown. The stream
-  /// ends on the `[DONE]` sentinel or when the server closes the connection.
-  /// No citations are included in the stream.
-  Stream<String> streamAsk(String question) async* {
+  /// Yields [AskToken]s as the answer arrives, with whitespace and newlines
+  /// preserved so the accumulated text still renders as markdown, then one
+  /// [AskCitations] after the last token if the answer cited any notes. The
+  /// stream ends on the `[DONE]` sentinel or when the server closes the
+  /// connection.
+  Stream<AskStreamEvent> streamAsk(String question) async* {
     try {
       final response = await _dio.post(
         '/ask/stream',
@@ -81,17 +101,17 @@ class AskRepository {
           final frame = buffer.substring(0, split.start);
           buffer = buffer.substring(split.end);
 
-          final token = _parseFrame(frame);
-          if (token == null) return; // [DONE]
-          if (token.isNotEmpty) yield token;
+          final event = parseFrame(frame);
+          if (event == null) return; // [DONE]
+          if (!(event is AskToken && event.text.isEmpty)) yield event;
 
           split = _nextFrameBreak(buffer);
         }
       }
 
       // Server closed without a trailing blank line — flush what's left.
-      final tail = _parseFrame(buffer);
-      if (tail != null && tail.isNotEmpty) yield tail;
+      final tail = parseFrame(buffer);
+      if (tail != null && !(tail is AskToken && tail.text.isEmpty)) yield tail;
     } on DioException catch (e) {
       throw ErrorHandler.fromDioException(e);
     }
@@ -103,16 +123,17 @@ class AskRepository {
     return match == null ? null : (start: match.start, end: match.end);
   }
 
-  /// Decodes one SSE frame into its text, or `null` if it ends the stream.
-  String? _parseFrame(String frame) {
-    if (frame.trim().isEmpty) return '';
+  /// Decodes one SSE frame, or returns `null` if it ends the stream.
+  @visibleForTesting
+  AskStreamEvent? parseFrame(String frame) {
+    if (frame.trim().isEmpty) return const AskToken('');
 
-    var isError = false;
+    String? event;
     final text = StringBuffer();
 
     for (final line in const LineSplitter().convert(frame)) {
       if (line.startsWith('event:')) {
-        isError = line.substring(6).trim() == 'error';
+        event = line.substring(6).trim();
         continue;
       }
       if (!line.startsWith('data:')) continue; // `:` comments, `id:`, `retry:`
@@ -123,11 +144,29 @@ class AskRepository {
       if (payload.startsWith(' ')) payload = payload.substring(1);
 
       if (payload == '[DONE]') return null;
-      text.write(_decodePayload(payload));
+      text.write(event == 'citations' ? payload : _decodePayload(payload));
     }
 
-    if (isError) throw AskStreamException(text.toString());
-    return text.toString();
+    if (event == 'error') throw AskStreamException(text.toString());
+    if (event == 'citations') return AskCitations(_decodeCitations(text.toString()));
+    return AskToken(text.toString());
+  }
+
+  List<Citation> _decodeCitations(String payload) {
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is List) {
+        return [
+          for (final c in decoded)
+            if (c is Map<String, dynamic>) Citation.fromJson(c),
+        ];
+      }
+    } on FormatException {
+      // Malformed citations must never break an otherwise good answer.
+    } on TypeError {
+      // Same: a field with an unexpected type.
+    }
+    return const [];
   }
 
   /// Frames carry JSON-encoded strings so whitespace survives. Older servers
