@@ -28,7 +28,7 @@ abstract final class AppConfig {
   ///   1. `--dart-define=BASE_URL=<url>` (explicit override)
   ///   2. Flavor default (dev → Android emulator localhost)
   static const _railwayUrl =
-      'https://knowledgevault-production-8903.up.railway.app';
+      'https://api-production-1520.up.railway.app';
 
   static String get baseUrl {
     if (_baseUrlRaw.isNotEmpty) return _baseUrlRaw;

@@ -3,7 +3,7 @@
 **Cross-platform mobile app for KnowledgeVault**, an AI-powered personal knowledge base. Capture notes and files on the go, ask questions across your vault in natural language, and watch AI auto-organise everything into categories.
 
 - **Backend** (FastAPI + pgvector + LLM chain) — https://github.com/Awaneee/knowledgevault-backend
-- **Live API** — https://knowledgevault-production-8903.up.railway.app
+- **Live API** — https://api-production-1520.up.railway.app
 - **Stack** — Flutter (Material 3) · Riverpod · go_router · Dio · drift · flutter_markdown
 
 ---
@@ -90,7 +90,7 @@ All build-time config lives in `lib/core/config/app_config.dart` and is injected
 | `FLAVOR` | `dev` \| `staging` \| `prod` | picks the default `BASE_URL` |
 | `BASE_URL` | any URL | explicit override (wins over `FLAVOR` default) |
 
-Prod points at `https://knowledgevault-production-8903.up.railway.app`. Dev defaults to the Android-emulator localhost bridge (`10.0.2.2:8000`) or `localhost:8000` on desktop.
+Prod points at `https://api-production-1520.up.railway.app`. Dev defaults to the Android-emulator localhost bridge (`10.0.2.2:8000`) or `localhost:8000` on desktop.
 
 ---
 
