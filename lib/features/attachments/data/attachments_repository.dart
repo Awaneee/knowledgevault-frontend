@@ -27,13 +27,12 @@ class AttachmentsRepository {
 
   Future<AttachmentResponse> upload({
     required int noteId,
-    required String filePath,
-    required String filename,
+    required MultipartFile file,
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: filename),
+        'file': file,
       });
       final response = await _dio.post(
         '/attachments/',

@@ -45,36 +45,71 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 8,
-        title: TextField(
-          controller: _queryCtrl,
-          autofocus: false,
-          decoration: InputDecoration(
-            hintText: 'Search notes…',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _queryCtrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _queryCtrl.clear();
-                      setState(() => _debouncedQuery = '');
-                      _debounce?.cancel();
-                    },
-                  )
-                : null,
-            border: InputBorder.none,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: TextField(
+            controller: _queryCtrl,
+            autofocus: false,
+            decoration: InputDecoration(
+              hintText: 'Search notes…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(100),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(100),
+                borderSide: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(100),
+                borderSide: BorderSide(color: cs.secondary, width: 1.6),
+              ),
+              suffixIcon: _queryCtrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Clear',
+                      onPressed: () {
+                        _queryCtrl.clear();
+                        setState(() => _debouncedQuery = '');
+                        _debounce?.cancel();
+                      },
+                    )
+                  : null,
+            ),
+            onChanged: _onQueryChanged,
           ),
-          onChanged: _onQueryChanged,
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Smart'),
-            Tab(text: 'Semantic'),
-            Tab(text: 'Chunks'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            height: 46,
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainer,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Smart'),
+                Tab(text: 'Semantic'),
+                Tab(text: 'Chunks'),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -99,12 +134,16 @@ class _SmartTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (query.isEmpty) {
-      return const EmptyState(message: 'Start typing to search your notes.');
+      return const EmptyState(
+        icon: Icons.search_rounded,
+        message: 'Start typing to search your notes.',
+      );
     }
 
     final async = ref.watch(smartSearchProvider(query));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
       error: (e, _) => ErrorView(
         message: e.toString(),
         onRetry: () => ref.invalidate(smartSearchProvider(query)),
@@ -112,9 +151,9 @@ class _SmartTab extends ConsumerWidget {
       data: (results) => results.isEmpty
           ? const EmptyState(message: 'No notes found for this query.')
           : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               itemCount: results.length,
-              itemBuilder: (_, i) =>
-                  NoteSearchResultTile(result: results[i]),
+              itemBuilder: (_, i) => NoteSearchResultTile(result: results[i]),
             ),
     );
   }
@@ -131,12 +170,14 @@ class _SemanticTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (query.isEmpty) {
       return const EmptyState(
-          message: 'Chunk-level semantic search.\nStart typing to retrieve.');
+        message: 'Chunk-level semantic search.\nStart typing to retrieve.',
+      );
     }
 
     final async = ref.watch(semanticSearchProvider(query));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
       error: (e, _) => ErrorView(
         message: e.toString(),
         onRetry: () => ref.invalidate(semanticSearchProvider(query)),
@@ -144,6 +185,7 @@ class _SemanticTab extends ConsumerWidget {
       data: (results) => results.isEmpty
           ? const EmptyState(message: 'No results found.')
           : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               itemCount: results.length,
               itemBuilder: (_, i) => ChunkResultTile(result: results[i]),
             ),
@@ -162,13 +204,14 @@ class _HybridTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (query.isEmpty) {
       return const EmptyState(
-          message:
-              'Intent-aware hybrid search.\nStart typing to retrieve.');
+        message: 'Intent-aware hybrid search.\nStart typing to retrieve.',
+      );
     }
 
     final async = ref.watch(hybridSearchProvider(query));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
       error: (e, _) => ErrorView(
         message: e.toString(),
         onRetry: () => ref.invalidate(hybridSearchProvider(query)),
@@ -176,6 +219,7 @@ class _HybridTab extends ConsumerWidget {
       data: (results) => results.isEmpty
           ? const EmptyState(message: 'No results found.')
           : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               itemCount: results.length,
               itemBuilder: (_, i) => ChunkResultTile(result: results[i]),
             ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../notes/ui/widgets/note_card.dart';
 import '../../data/models/chunk_result.dart';
 import '../../../notes/data/models/note_search_response.dart';
 
@@ -12,17 +14,13 @@ class NoteSearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final snippet = result.content?.trim() ?? '';
-    final preview =
-        snippet.length > 120 ? '${snippet.substring(0, 120)}…' : snippet;
-
-    return ListTile(
-      leading: const Icon(Icons.note_outlined),
-      title: Text(result.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: preview.isNotEmpty
-          ? Text(preview, maxLines: 2, overflow: TextOverflow.ellipsis)
-          : null,
-      onTap: () => context.push('/notes/${result.id}'),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: NoteTile(
+        title: result.title,
+        content: result.content,
+        onTap: () => context.push('/notes/${result.id}'),
+      ),
     );
   }
 }
@@ -36,29 +34,36 @@ class ChunkResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(result.noteTitle,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.noteTitle,
                 style: theme.textTheme.titleSmall,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            if (result.intentCategory != null) ...[
-              const SizedBox(height: 2),
-              Text(result.intentCategory!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary)),
-            ],
-            const SizedBox(height: 6),
-            Text(result.chunkText,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (result.intentCategory != null) ...[
+                const SizedBox(height: 6),
+                TagPill(
+                  label: result.intentCategory!,
+                  pastel: Pastel.of(result.intentCategory!),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                result.chunkText,
                 style: theme.textTheme.bodySmall,
                 maxLines: 4,
-                overflow: TextOverflow.ellipsis),
-          ],
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ambient.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/ask_repository.dart';
 import '../data/models/citation.dart';
@@ -86,42 +89,44 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     _streamSub?.cancel();
     final repo = ref.read(askRepositoryProvider);
 
-    _streamSub = repo.streamAsk(question).listen(
-      (event) {
-        if (!mounted) return;
-        setState(() {
-          switch (event) {
-            case AskToken(:final text):
-              _streamedText += text;
-            case AskCitations(:final citations):
-              _streamCitations = citations;
-          }
-        });
-      },
-      onDone: () {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-            _isStreaming = false;
-          });
-        }
-      },
-      onError: (error, _) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-            _isStreaming = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${error.toString()}'),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
-      },
-      cancelOnError: true,
-    );
+    _streamSub = repo
+        .streamAsk(question)
+        .listen(
+          (event) {
+            if (!mounted) return;
+            setState(() {
+              switch (event) {
+                case AskToken(:final text):
+                  _streamedText += text;
+                case AskCitations(:final citations):
+                  _streamCitations = citations;
+              }
+            });
+          },
+          onDone: () {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _isStreaming = false;
+              });
+            }
+          },
+          onError: (error, _) {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _isStreaming = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error: ${error.toString()}'),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+            }
+          },
+          cancelOnError: true,
+        );
   }
 
   Future<void> _fullResponse(String question) async {
@@ -147,20 +152,35 @@ class _AskScreenState extends ConsumerState<AskScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(askModeProvider);
     final askAsync = ref.watch(askProvider);
-    final hasContent = _streamedText.isNotEmpty ||
+    final hasContent =
+        _streamedText.isNotEmpty ||
         askAsync.valueOrNull != null ||
         askAsync.hasError;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Ask KnowledgeVault'),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text('Ask KnowledgeVault'),
+        ),
         actions: [
-          TextButton.icon(
-            icon: Icon(mode.icon, size: 18),
-            label: Text(mode.label),
-            onPressed: _loading
-                ? null
-                : () => ref.read(askModeProvider.notifier).toggle(),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: OutlinedButton.icon(
+              icon: Icon(mode.icon, size: 16),
+              label: Text(mode.label),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                backgroundColor: AppTheme.cardColor(
+                  Theme.of(context).colorScheme,
+                ),
+              ),
+              onPressed: _loading
+                  ? null
+                  : () => ref.read(askModeProvider.notifier).toggle(),
+            ),
           ),
           if (hasContent)
             IconButton(
@@ -170,33 +190,40 @@ class _AskScreenState extends ConsumerState<AskScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: hasContent
-                ? _AnswerArea(
-                    mode: mode,
-                    streamedText: _streamedText,
-                    streamCitations: _streamCitations,
-                    isStreaming: _isStreaming,
-                    askAsync: askAsync,
-                    onGetFullAnswer: _streamedText.isNotEmpty
-                        ? () => _fullResponse(
-                            _lastQuestion ?? _questionCtrl.text.trim())
-                        : null,
-                    onStop: _isStreaming ? _stopStreaming : null,
-                    onRegenerate:
-                        _loading || _lastQuestion == null ? null : _regenerate,
-                  )
-                : const _EmptyPrompt(),
+      body: GlowBackground(
+        intensity: hasContent ? 0.5 : 1,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: hasContent
+                    ? _AnswerArea(
+                        mode: mode,
+                        streamedText: _streamedText,
+                        streamCitations: _streamCitations,
+                        isStreaming: _isStreaming,
+                        askAsync: askAsync,
+                        onGetFullAnswer: _streamedText.isNotEmpty
+                            ? () => _fullResponse(
+                                _lastQuestion ?? _questionCtrl.text.trim(),
+                              )
+                            : null,
+                        onStop: _isStreaming ? _stopStreaming : null,
+                        onRegenerate: _loading || _lastQuestion == null
+                            ? null
+                            : _regenerate,
+                      )
+                    : const _EmptyPrompt(),
+              ),
+              _QuestionInput(
+                controller: _questionCtrl,
+                loading: _loading,
+                onSubmit: _submit,
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          _QuestionInput(
-            controller: _questionCtrl,
-            loading: _loading,
-            onSubmit: _submit,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -228,10 +255,11 @@ class _AnswerArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
         // Streaming mode output
-        if (mode == AskMode.streaming && (streamedText.isNotEmpty || isStreaming)) ...[
+        if (mode == AskMode.streaming &&
+            (streamedText.isNotEmpty || isStreaming)) ...[
           StreamAnswerView(
             text: streamedText,
             citations: streamCitations,
@@ -262,8 +290,7 @@ class _AnswerArea extends StatelessWidget {
         // Full mode output
         if (mode == AskMode.full)
           askAsync.when(
-            loading: () => const StreamAnswerView(
-                text: '', isStreaming: true),
+            loading: () => const StreamAnswerView(text: '', isStreaming: true),
             error: (e, _) => ErrorView(message: e.toString()),
             data: (response) {
               if (response == null) return const SizedBox.shrink();
@@ -296,44 +323,131 @@ class _QuestionInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                maxLength: _maxQuestion,
-                maxLines: 4,
-                minLines: 1,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    null,
-                enabled: !loading,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSubmit(),
-                decoration: const InputDecoration(
-                  hintText: 'Ask a question about your notes…',
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: PromptBar(
+          controller: controller,
+          loading: loading,
+          onSubmit: onSubmit,
+          hintText: 'Ask a question about your notes…',
+          maxLength: _maxQuestion,
+        ),
+      ),
+    );
+  }
+}
+
+/// Rounded prompt field with a gradient send button, shared with chats.
+class PromptBar extends StatelessWidget {
+  const PromptBar({
+    super.key,
+    required this.controller,
+    required this.loading,
+    required this.onSubmit,
+    required this.hintText,
+    this.maxLength,
+  });
+
+  final TextEditingController controller;
+  final bool loading;
+  final VoidCallback onSubmit;
+  final String hintText;
+  final int? maxLength;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final colors = AppColors.aiGradient(Theme.of(context).brightness);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor(cs),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              maxLength: maxLength,
+              maxLines: 4,
+              minLines: 1,
+              buildCounter:
+                  (
+                    _, {
+                    required currentLength,
+                    required isFocused,
+                    maxLength,
+                  }) => null,
+              enabled: !loading,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSubmit(),
+              decoration: InputDecoration(
+                hintText: hintText,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            loading
-                ? const SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 46,
+            height: 46,
+            child: loading
+                ? const Padding(
+                    padding: EdgeInsets.all(13),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : IconButton.filled(
-                    icon: const Icon(Icons.send),
-                    tooltip: 'Send',
-                    onPressed: onSubmit,
+                : Semantics(
+                    label: 'Send',
+                    button: true,
+                    container: true,
+                    excludeSemantics: true,
+                    onTap: onSubmit,
+                    child: Tooltip(
+                      message: 'Send',
+                      child: Material(
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: colors,
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: onSubmit,
+                            child: const Icon(
+                              Icons.arrow_upward_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -346,21 +460,23 @@ class _EmptyPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome_outlined,
-                size: 48,
-                color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 16),
+            const HaloOrb(
+              size: 230,
+              child: Icon(Icons.auto_awesome, size: 40, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
             Text(
               'Ask a question about your notes.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ambient.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../attachments/ui/widgets/attachment_list.dart';
@@ -27,11 +30,22 @@ class NoteDetailScreen extends ConsumerWidget {
         actions: [
           noteAsync.maybeWhen(
             data: (_) => PopupMenuButton<String>(
+              tooltip: 'More options',
+              icon: const Icon(Icons.more_horiz_rounded),
               onSelected: (value) {
                 if (value == 'delete') _confirmDelete(context, ref);
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'delete', child: Text('Delete note')),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded, size: 20),
+                      SizedBox(width: 12),
+                      Text('Delete note'),
+                    ],
+                  ),
+                ),
               ],
             ),
             orElse: () => const SizedBox.shrink(),
@@ -45,22 +59,30 @@ class NoteDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(noteDetailProvider(noteId)),
         ),
         data: (note) => ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
           children: [
-            Text(note.title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 16),
+            Text(note.title, style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 18),
             if (note.content != null)
-              Text(note.content!,
-                  style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 20),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: SelectableText(
+                    note.content!,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(height: 1.6),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 14),
 
             // ── Category picker ─────────────────────────────────────────
             _CategoryRow(note: note),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             // ── Related notes ────────────────────────────────────────────
             _RelatedNotesSection(noteId: noteId),
-            const SizedBox(height: 16),
 
             // ── Attachments ──────────────────────────────────────────────
             _SectionHeader(
@@ -68,7 +90,6 @@ class NoteDetailScreen extends ConsumerWidget {
               trailing: UploadButton(noteId: noteId),
             ),
             AttachmentList(noteId: noteId),
-            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -116,8 +137,8 @@ class _RelatedNotesSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _SectionHeader(title: 'Related Notes'),
-            const SizedBox(height: 8),
             ...related.map((r) => _RelatedNoteTile(note: r)),
+            const SizedBox(height: 16),
           ],
         );
       },
@@ -134,49 +155,62 @@ class _RelatedNoteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (note.similarity * 100).toStringAsFixed(0);
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => context.push('/notes/${note.noteId}'),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(Icons.note_outlined, size: 20, color: scheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(note.title,
+    final tt = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: InkWell(
+          onTap: () => context.push('/notes/${note.noteId}'),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                IconChip(
+                  Icons.description_outlined,
+                  pastel: Pastel.of(note.noteId),
+                  size: 42,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        note.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge),
-                    if (note.snippet.isNotEmpty)
-                      Text(note.snippet,
+                        style: tt.titleSmall,
+                      ),
+                      if (note.snippet.isNotEmpty)
+                        Text(
+                          note.snippet,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: scheme.outline,
-                              )),
-                  ],
+                          style: tt.bodySmall,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    '$pct%',
+                    style: tt.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-                child: Text('$pct%',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onPrimaryContainer)),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -193,41 +227,64 @@ class _CategoryRow extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final categoriesAsync = ref.watch(categoriesProvider);
-    final categories = categoriesAsync.valueOrNull ?? const <CategoryResponse>[];
+    final categories =
+        categoriesAsync.valueOrNull ?? const <CategoryResponse>[];
     final current = note.categoryId == null
         ? null
         : categories.firstWhere(
             (c) => c.id == note.categoryId,
             orElse: () => const CategoryResponse(id: -1, name: ''),
           );
-    final currentName =
-        (current == null || current.id == -1) ? 'Uncategorized' : current.name;
+    final currentName = (current == null || current.id == -1)
+        ? 'Uncategorized'
+        : current.name;
 
-    return InkWell(
-      onTap: () => _openPicker(context, ref),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.label_outline, size: 20, color: cs.primary),
-            const SizedBox(width: 10),
-            Text('Category', style: tt.labelMedium?.copyWith(color: cs.outline)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                currentName,
-                style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    final hasCategory = current != null && current.id != -1;
+
+    return Material(
+      color: AppTheme.cardColor(cs),
+      shape: StadiumBorder(
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: InkWell(
+        onTap: () => _openPicker(context, ref),
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: hasCategory
+                      ? Pastel.of(currentName).gradient
+                      : null,
+                  color: hasCategory ? null : cs.surfaceContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.label_outline_rounded,
+                  size: 18,
+                  color: hasCategory ? AppColors.onPastel : cs.onSurfaceVariant,
+                ),
               ),
-            ),
-            Icon(Icons.edit_outlined, size: 18, color: cs.outline),
-          ],
+              const SizedBox(width: 12),
+              Text(
+                'Category',
+                style: tt.labelMedium?.copyWith(color: cs.outline),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  currentName,
+                  style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.edit_outlined, size: 18, color: cs.outline),
+            ],
+          ),
         ),
       ),
     );
@@ -238,7 +295,6 @@ class _CategoryRow extends ConsumerWidget {
     final selected = await showModalBottomSheet<_CategorySelection>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       builder: (ctx) => _CategoryPickerSheet(
         categories: categories,
         currentCategoryId: note.categoryId,
@@ -253,9 +309,9 @@ class _CategoryRow extends ConsumerWidget {
           .updateCategory(note.id, selected.categoryId);
       ref.invalidate(noteDetailProvider(note.id));
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Category updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Category updated')));
       }
     } catch (_) {
       if (context.mounted) {
@@ -304,8 +360,8 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
     final filtered = q.isEmpty
         ? widget.categories
         : widget.categories
-            .where((c) => c.name.toLowerCase().contains(q))
-            .toList();
+              .where((c) => c.name.toLowerCase().contains(q))
+              .toList();
 
     return SafeArea(
       child: Padding(
@@ -320,13 +376,14 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
           children: [
             Row(
               children: [
-                Text('Choose category',
-                    style: tt.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  'Choose category',
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
                 const Spacer(),
                 TextButton(
-                  onPressed: () => Navigator.pop(
-                      context, const _CategorySelection(null)),
+                  onPressed: () =>
+                      Navigator.pop(context, const _CategorySelection(null)),
                   child: const Text('Uncategorize'),
                 ),
               ],
@@ -335,15 +392,8 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search or type a new name…',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: cs.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                fillColor: cs.surfaceContainer,
               ),
               onChanged: (v) {
                 setState(() => _query = v);
@@ -379,15 +429,16 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
                             color: selected ? cs.primary : cs.outline,
                           ),
                           title: Text(c.name),
-                          onTap: () => Navigator.pop(
-                              context, _CategorySelection(c.id)),
+                          onTap: () =>
+                              Navigator.pop(context, _CategorySelection(c.id)),
                         );
                       },
                     ),
             ),
             if (_query.trim().isNotEmpty &&
-                !widget.categories.any((c) =>
-                    c.name.toLowerCase() == _query.trim().toLowerCase())) ...[
+                !widget.categories.any(
+                  (c) => c.name.toLowerCase() == _query.trim().toLowerCase(),
+                )) ...[
               const Divider(height: 24),
               FilledButton.icon(
                 onPressed: _creating ? null : _createAndSelect,
@@ -400,7 +451,7 @@ class _CategoryPickerSheetState extends ConsumerState<_CategoryPickerSheet> {
                     : const Icon(Icons.add, size: 18),
                 label: Text('Create "${_query.trim()}"'),
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
+                  minimumSize: const Size.fromHeight(50),
                 ),
               ),
             ],
@@ -437,12 +488,15 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const Spacer(),
-        if (trailing != null) trailing!,
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const Spacer(),
+          if (trailing != null) trailing!,
+        ],
+      ),
     );
   }
 }

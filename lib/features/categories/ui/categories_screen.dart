@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/ambient.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../intents/data/models/intent_category_response.dart';
 import '../../intents/providers/intents_provider.dart';
+import '../../intents/ui/intent_style.dart';
 
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
@@ -17,7 +19,8 @@ class CategoriesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Categories')),
       body: categoriesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
         error: (e, _) => ErrorView(
           message: e.toString(),
           onRetry: () => ref.invalidate(intentsProvider),
@@ -25,6 +28,7 @@ class CategoriesScreen extends ConsumerWidget {
         data: (categories) {
           if (categories.isEmpty) {
             return const EmptyState(
+              icon: Icons.folder_open_rounded,
               message:
                   'No categories yet.\nNotes are auto-organised by AI when you add them.',
             );
@@ -34,25 +38,42 @@ class CategoriesScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(intentsProvider),
-            child: ListView.builder(
-              itemCount: groups.length,
-              itemBuilder: (context, i) {
-                final group = groups[i];
-                return ListTile(
-                  leading: Icon(_intentIcon(group.intentType)),
-                  title: Text(_intentLabel(group.intentType)),
-                  trailing: Text(
-                    '${group.totalNotes} ${group.totalNotes == 1 ? 'note' : 'notes'}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+            child: LayoutBuilder(
+              builder: (context, c) => CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
+                    sliver: SliverGrid.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: c.maxWidth >= 900
+                            ? 4
+                            : c.maxWidth >= 600
+                            ? 3
+                            : 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 1.05,
+                      ),
+                      itemCount: groups.length,
+                      itemBuilder: (context, i) {
+                        final group = groups[i];
+                        final label = intentLabel(group.intentType);
+                        return PastelCard(
+                          pastel: intentPastel(group.intentType),
+                          icon: intentIcon(group.intentType),
+                          title: label,
+                          caption:
+                              '${group.totalNotes} ${group.totalNotes == 1 ? 'note' : 'notes'}',
+                          onTap: () => context.push(
+                            '/categories/t/${group.intentType}',
+                            extra: label,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  onTap: () => context.push(
-                    '/categories/t/${group.intentType}',
-                    extra: _intentLabel(group.intentType),
-                  ),
-                );
-              },
+                ],
+              ),
             ),
           );
         },
@@ -79,8 +100,7 @@ class _IntentGroup {
   final int totalNotes;
 }
 
-List<_IntentGroup> _groupByIntentType(
-    List<IntentCategoryResponse> categories) {
+List<_IntentGroup> _groupByIntentType(List<IntentCategoryResponse> categories) {
   final map = <String, List<IntentCategoryResponse>>{};
   for (final c in categories) {
     map.putIfAbsent(c.intentType, () => []).add(c);
@@ -91,30 +111,5 @@ List<_IntentGroup> _groupByIntentType(
     final total = e.value.fold(0, (s, c) => s + c.noteCount);
     final ids = e.value.map((c) => c.id).toList();
     return _IntentGroup(intentType: e.key, categoryIds: ids, totalNotes: total);
-  }).toList()
-    ..sort((a, b) => b.totalNotes.compareTo(a.totalNotes));
+  }).toList()..sort((a, b) => b.totalNotes.compareTo(a.totalNotes));
 }
-
-String _intentLabel(String type) => switch (type) {
-      'todo' => 'Tasks',
-      'study' => 'Study',
-      'question' => 'Questions',
-      'communication' => 'Messages',
-      'reference' => 'Reference',
-      'idea' => 'Ideas',
-      'reminder' => 'Reminders',
-      'event' => 'Events',
-      _ => 'General',
-    };
-
-IconData _intentIcon(String type) => switch (type) {
-      'todo' => Icons.check_circle_outline,
-      'study' => Icons.school_outlined,
-      'question' => Icons.help_outline,
-      'communication' => Icons.chat_bubble_outline,
-      'reference' => Icons.bookmark_outline,
-      'idea' => Icons.lightbulb_outline,
-      'reminder' => Icons.alarm_outlined,
-      'event' => Icons.event_outlined,
-      _ => Icons.notes_outlined,
-    };

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_exceptions.dart';
+import '../../../shared/widgets/ambient.dart';
 import '../data/auth_repository.dart';
 
 /// Two-step password reset:
@@ -55,14 +56,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       );
     } on RateLimitException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Something went wrong. Please try again.')),
+            content: Text('Something went wrong. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -74,24 +77,30 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!(_resetFormKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
-      await ref.read(authRepositoryProvider).resetPassword(
+      await ref
+          .read(authRepositoryProvider)
+          .resetPassword(
             email: _emailCtrl.text.trim(),
             code: _codeCtrl.text.trim(),
             newPassword: _passwordCtrl.text,
           );
       if (!mounted) return;
-      context.go('/login',
-          extra: 'Password reset. Log in with your new password.');
+      context.go(
+        '/login',
+        extra: 'Password reset. Log in with your new password.',
+      );
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Something went wrong. Please try again.')),
+            content: Text('Something went wrong. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -105,12 +114,20 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: const Text('Reset password')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            child: _codeSent ? _buildResetForm(cs, tt) : _buildEmailForm(cs, tt),
+      body: GlowBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _codeSent
+                    ? _buildResetForm(cs, tt)
+                    : _buildEmailForm(cs, tt),
+              ),
+            ),
           ),
         ),
       ),
@@ -123,8 +140,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Forgot your password?',
-              style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SparkleOrb(size: 52, icon: Icons.key_rounded),
+          const SizedBox(height: 24),
+          const TwoToneTitle('Forgot your', 'password?', size: 30),
           const SizedBox(height: 8),
           Text(
             "Enter the email you signed up with. We'll send you a 6-digit code.",
@@ -152,20 +170,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SizedBox(height: 20),
           FilledButton(
             onPressed: _loading ? null : _sendCode,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
             child: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.onPrimary,
+                    ),
                   )
-                : const Text('Send reset code',
-                    style: TextStyle(fontSize: 16)),
+                : const Text('Send reset code'),
           ),
         ],
       ),
@@ -178,8 +192,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Enter the code',
-              style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SparkleOrb(size: 52, icon: Icons.pin_rounded),
+          const SizedBox(height: 24),
+          const TwoToneTitle(
+            'Enter the',
+            'code', size: 30),
           const SizedBox(height: 8),
           Text(
             'We sent a 6-digit code to ${_emailCtrl.text.trim()}. Enter it below along with your new password. Code expires in 30 minutes.',
@@ -213,13 +230,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               labelText: 'New password',
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
-                icon: Icon(_obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined),
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
                 onPressed: _loading
                     ? null
-                    : () => setState(
-                        () => _obscurePassword = !_obscurePassword),
+                    : () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
               ),
             ),
             obscureText: _obscurePassword,
@@ -234,20 +253,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SizedBox(height: 20),
           FilledButton(
             onPressed: _loading ? null : _submitReset,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
             child: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.onPrimary,
+                    ),
                   )
-                : const Text('Reset password',
-                    style: TextStyle(fontSize: 16)),
+                : const Text('Reset password'),
           ),
           const SizedBox(height: 8),
           TextButton(

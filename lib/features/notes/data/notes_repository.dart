@@ -97,10 +97,10 @@ class NotesRepository {
 
   /// Uploads a file and creates a note from its content.
   /// Returns the ID of the created note.
-  Future<int> uploadFile(String filePath, String filename) async {
+  Future<int> uploadFile(MultipartFile file) async {
     try {
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: filename),
+        'file': file,
       });
       final response = await _dio.post('/uploads/file', data: formData);
       return response.data['note_id'] as int;

@@ -54,11 +54,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 final filtered = _selectedCategoryId == null
                     ? notes
                     : notes
-                        .where((n) => n.categoryId == _selectedCategoryId)
-                        .toList();
+                          .where((n) => n.categoryId == _selectedCategoryId)
+                          .toList();
 
                 if (filtered.isEmpty) {
                   return EmptyState(
+                    icon: Icons.edit_note_rounded,
                     message: notes.isEmpty
                         ? "You haven't added any notes yet."
                         : 'No notes in this category.',
@@ -74,14 +75,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 return RefreshIndicator(
                   onRefresh: () => ref.read(notesProvider.notifier).refresh(),
                   child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 4, bottom: 96),
                     itemCount: filtered.length,
                     itemBuilder: (context, i) {
                       final note = filtered[i];
                       final category = note.categoryId == null
                           ? null
                           : categories
-                              .where((c) => c.id == note.categoryId)
-                              .firstOrNull;
+                                .where((c) => c.id == note.categoryId)
+                                .firstOrNull;
 
                       return _SwipeToDelete(
                         key: ValueKey(note.id),
@@ -95,7 +97,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                      'Waiting to sync — open it once you\'re back online.'),
+                                    'Waiting to sync — open it once you\'re back online.',
+                                  ),
                                 ),
                               );
                               return;
@@ -139,15 +142,16 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     try {
       await ref.read(notesProvider.notifier).deleteNote(note.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('"${note.title}" deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('"${note.title}" deleted')));
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to delete note. Please try again.')),
+            content: Text('Failed to delete note. Please try again.'),
+          ),
         );
       }
     }
@@ -169,7 +173,7 @@ class _CategoryFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
       child: Row(
         children: [
           FilterChip(
@@ -177,14 +181,16 @@ class _CategoryFilterBar extends StatelessWidget {
             selected: selectedId == null,
             onSelected: (_) => onSelected(null),
           ),
-          ...categories.map((c) => Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: FilterChip(
-                  label: Text(c.name),
-                  selected: selectedId == c.id,
-                  onSelected: (sel) => onSelected(sel ? c.id : null),
-                ),
-              )),
+          ...categories.map(
+            (c) => Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: FilterChip(
+                label: Text(c.name),
+                selected: selectedId == c.id,
+                onSelected: (sel) => onSelected(sel ? c.id : null),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -210,11 +216,15 @@ class _SwipeToDelete extends StatelessWidget {
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
         padding: const EdgeInsets.only(right: 24),
-        color: Theme.of(context).colorScheme.error,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(24),
+        ),
         child: Icon(
           Icons.delete_outline,
-          color: Theme.of(context).colorScheme.onError,
+          color: Theme.of(context).colorScheme.onErrorContainer,
         ),
       ),
       confirmDismiss: (_) async {

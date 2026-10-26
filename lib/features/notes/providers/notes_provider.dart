@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exceptions.dart';
@@ -239,8 +240,8 @@ class NotesNotifier extends AsyncNotifier<List<NoteResponse>> {
     }
   }
 
-  Future<int> uploadFile(String filePath, String filename) async {
-    return ref.read(notesRepositoryProvider).uploadFile(filePath, filename);
+  Future<int> uploadFile(MultipartFile file) async {
+    return ref.read(notesRepositoryProvider).uploadFile(file);
   }
 
   Future<void> refresh() async {

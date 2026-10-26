@@ -1,8 +1,12 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/error_handler.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../shared/extensions/platform_file_ext.dart';
+import '../../../shared/widgets/ambient.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -27,17 +31,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: kIsWeb,
+    );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
-    if (file.path == null) return;
+    if (!file.isReadable) return;
 
     setState(() => _busy = true);
     try {
-      await ref.read(authProvider.notifier).uploadAvatar(
-            filePath: file.path!,
-            filename: file.name,
-          );
+      await ref
+          .read(authProvider.notifier)
+          .uploadAvatar(await file.toMultipart());
     } catch (e) {
       _showError(e);
     } finally {
@@ -142,64 +148,132 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: const Text('Profile')),
-      body: user == null
-          ? const Center(child: CircularProgressIndicator())
-          : AbsorbPointer(
-              absorbing: _busy,
-              child: Opacity(
-                opacity: _busy ? 0.6 : 1,
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    Center(
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          UserAvatar(user: user, radius: 48),
-                          Positioned(
-                            right: -4,
-                            bottom: -4,
-                            child: Material(
-                              color: Theme.of(context).colorScheme.primary,
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: () => _openAvatarSheet(user.hasAvatar),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: Icon(
-                                    Icons.camera_alt_outlined,
-                                    size: 18,
-                                    color:
-                                        Theme.of(context).colorScheme.onPrimary,
+      body: GlowBackground(
+        child: user == null
+            ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+            : AbsorbPointer(
+                absorbing: _busy,
+                child: Opacity(
+                  opacity: _busy ? 0.6 : 1,
+                  child: SafeArea(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                          children: [
+                            Center(
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: AppColors.aiGradient(
+                                          Theme.of(context).brightness,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: cs.surface,
+                                      ),
+                                      child: UserAvatar(user: user, radius: 52),
+                                    ),
                                   ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Tooltip(
+                                      message: 'Change picture',
+                                      child: Material(
+                                        color: cs.primary,
+                                        shape: CircleBorder(
+                                          side: BorderSide(
+                                            color: cs.surface,
+                                            width: 3,
+                                          ),
+                                        ),
+                                        child: InkWell(
+                                          customBorder: const CircleBorder(),
+                                          onTap: () =>
+                                              _openAvatarSheet(user.hasAvatar),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.photo_camera_outlined,
+                                              size: 18,
+                                              color: cs.onPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 6,
+                                ),
+                                child: Column(
+                                  children: [
+                                    _InfoTile(
+                                      label: 'Username',
+                                      value: user.username,
+                                      onEdit: () =>
+                                          _editUsername(user.username),
+                                    ),
+                                    const Divider(),
+                                    _InfoTile(
+                                      label: 'Email',
+                                      value: user.email,
+                                    ),
+                                    const Divider(),
+                                    _InfoTile(
+                                      label: 'User ID',
+                                      value: '#${user.id}',
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            Card(
+                              child: ListTile(
+                                leading: Icon(
+                                  Icons.logout_rounded,
+                                  color: cs.error,
+                                ),
+                                title: Text(
+                                  'Log out',
+                                  style: TextStyle(color: cs.error),
+                                ),
+                                onTap: () =>
+                                    ref.read(authProvider.notifier).logout(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    _InfoTile(
-                      label: 'Username',
-                      value: user.username,
-                      onEdit: () => _editUsername(user.username),
-                    ),
-                    _InfoTile(label: 'Email', value: user.email),
-                    _InfoTile(label: 'User ID', value: '#${user.id}'),
-                    const Divider(height: 32),
-                    ListTile(
-                      leading: const Icon(Icons.logout),
-                      title: const Text('Log out'),
-                      onTap: () => ref.read(authProvider.notifier).logout(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -214,17 +288,30 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    )),
+          // Label above value, so long values (emails) get the full width.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-          Expanded(child: Text(value)),
           if (onEdit != null)
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 18),

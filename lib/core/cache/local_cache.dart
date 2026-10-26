@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'connection/connection.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -37,14 +34,8 @@ class PendingOp {
 ///
 /// Pass [executor] to use a different database (tests use in-memory).
 class AppDatabase extends GeneratedDatabase {
-  AppDatabase({QueryExecutor? executor}) : super(executor ?? _openOnDisk());
-
-  static QueryExecutor _openOnDisk() => LazyDatabase(() async {
-        final dir = await getApplicationDocumentsDirectory();
-        return NativeDatabase.createInBackground(
-          File(p.join(dir.path, 'kv_cache.sqlite')),
-        );
-      });
+  AppDatabase({QueryExecutor? executor})
+      : super(executor ?? openCacheDatabase());
 
   @override
   Iterable<TableInfo<Table, Object?>> get allTables => const [];

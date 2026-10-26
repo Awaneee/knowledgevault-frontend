@@ -91,13 +91,10 @@ class AuthRepository {
   }
 
   /// POST /auth/me/avatar — upload/replace the profile picture.
-  Future<UserResponse> uploadAvatar({
-    required String filePath,
-    required String filename,
-  }) async {
+  Future<UserResponse> uploadAvatar({required MultipartFile file}) async {
     try {
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: filename),
+        'file': file,
       });
       final response = await _dio.post('/auth/me/avatar', data: formData);
       return UserResponse.fromJson(response.data as Map<String, dynamic>);

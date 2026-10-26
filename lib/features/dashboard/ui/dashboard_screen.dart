@@ -4,13 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ambient.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/categories_provider.dart';
 import '../../intents/data/models/intent_category_response.dart';
 import '../../intents/providers/intents_provider.dart';
+import '../../intents/ui/intent_style.dart';
 import '../../notes/data/models/note_response.dart';
 import '../../notes/providers/notes_provider.dart';
+import '../../notes/ui/widgets/note_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -31,9 +36,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// Poll notes every 4s while any note is still being organized. Stops
   /// automatically once every note has landed in `organized` (or `failed`).
   void _syncPolling(List<NoteResponse> notes) {
-    final needsPolling = notes.any((n) =>
-        n.organizationStatus == 'pending' ||
-        n.organizationStatus == 'processing');
+    final needsPolling = notes.any(
+      (n) =>
+          n.organizationStatus == 'pending' ||
+          n.organizationStatus == 'processing',
+    );
     if (needsPolling) {
       _pollTimer ??= Timer.periodic(const Duration(seconds: 4), (_) {
         if (!mounted) return;
@@ -56,189 +63,180 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final notes = notesAsync.valueOrNull ?? const <NoteResponse>[];
     final noteCount = notes.length;
-    final greeting = _greeting();
-    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('KnowledgeVault'),
-        actions: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            icon: UserAvatar(user: user, radius: 16),
-            tooltip: 'Profile',
-            onPressed: () => context.push('/profile'),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(notesProvider);
-          ref.invalidate(intentsProvider);
-          ref.invalidate(categoriesProvider);
-        },
-        child: ListView(
-          children: [
-            // ── Hero ──────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              color: cs.primaryContainer,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => context.push('/profile'),
-                        child: UserAvatar(user: user, radius: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          '$greeting${user != null ? ', ${user.username}' : ''}!',
-                          style: tt.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: cs.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Your AI-powered knowledge base',
-                    style: tt.bodyMedium?.copyWith(
-                      color: cs.onPrimaryContainer.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => context.push('/notes/new'),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('New Note'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => context.go('/ask'),
-                          icon: const Icon(Icons.auto_awesome, size: 18),
-                          label: const Text('Ask AI'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: cs.secondaryContainer,
-                            foregroundColor: cs.onSecondaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Body ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _StatCard(
-                    icon: Icons.note_alt_outlined,
-                    label: 'Total Notes',
-                    value: noteCount == 0 && notesAsync.isLoading
-                        ? '—'
-                        : '$noteCount',
-                    onTap: () => context.push('/notes'),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── Recent notes ─────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Recent notes', style: tt.titleMedium),
-                      TextButton(
-                        onPressed: () => context.push('/notes'),
-                        child: const Text('See all'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _RecentNotesSection(notesAsync: notesAsync),
-
-                  const SizedBox(height: 24),
-
-                  // ── Categories ───────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Categories', style: tt.titleMedium),
-                      TextButton(
-                        onPressed: () => context.go('/categories'),
-                        child: const Text('See all'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  categoriesAsync.when(
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    error: (_, __) => const SizedBox.shrink(),
-                    data: (cats) {
-                      if (cats.isEmpty) {
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Row(
-                              children: [
-                                Icon(Icons.auto_awesome_outlined,
-                                    color: cs.primary, size: 28),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Add notes and AI will automatically '
-                                    'organise them into categories.',
-                                    style: tt.bodyMedium
-                                        ?.copyWith(color: cs.onSurfaceVariant),
+      body: GlowBackground(
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(notesProvider);
+              ref.invalidate(intentsProvider);
+              ref.invalidate(categoriesProvider);
+            },
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  children: [
+                    // ── Top bar ────────────────────────────────────────
+                    Row(
+                      children: [
+                        const SparkleOrb(size: 40),
+                        const SizedBox(width: 10),
+                        Text('KnowledgeVault', style: tt.titleMedium),
+                        const Spacer(),
+                        Semantics(
+                          label: 'Profile',
+                          button: true,
+                          container: true,
+                          excludeSemantics: true,
+                          onTap: () => context.push('/profile'),
+                          child: Tooltip(
+                            message: 'Profile',
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => context.push('/profile'),
+                              child: Container(
+                                padding: const EdgeInsets.all(2.5),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: AppColors.aiGradient(
+                                      Theme.of(context).brightness,
+                                    ),
                                   ),
                                 ),
-                              ],
+                                child: UserAvatar(user: user, radius: 19),
+                              ),
                             ),
                           ),
-                        );
-                      }
-                      final groups = _buildGroups(cats);
-                      final top = groups.take(6).toList();
-                      return GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 1.4,
                         ),
-                        itemCount: top.length,
-                        itemBuilder: (context, i) =>
-                            _CategoryCard(group: top[i]),
-                      );
-                    },
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── Hero ───────────────────────────────────────────
+                    TwoToneTitle(
+                      '${_greeting()}${user != null ? ',' : '!'}',
+                      user != null ? '${user.username}!' : '',
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your AI-powered knowledge base',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => context.push('/notes/new'),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('New Note'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.go('/ask'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 52),
+                              backgroundColor: AppTheme.cardColor(cs),
+                            ),
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: const Text('Ask AI'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Stat ───────────────────────────────────────────
+                    _StatCard(
+                      icon: Icons.sticky_note_2_outlined,
+                      label: 'Total Notes',
+                      value: noteCount == 0 && notesAsync.isLoading
+                          ? '—'
+                          : '$noteCount',
+                      onTap: () => context.push('/notes'),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── Recent notes ───────────────────────────────────
+                    SectionHeader(
+                      'Recent notes',
+                      action: 'See all',
+                      onAction: () => context.push('/notes'),
+                    ),
+                    _RecentNotesSection(notesAsync: notesAsync),
+                    const SizedBox(height: 28),
+
+                    // ── Categories ─────────────────────────────────────
+                    SectionHeader(
+                      'Categories',
+                      action: 'See all',
+                      onAction: () => context.go('/categories'),
+                    ),
+                    categoriesAsync.when(
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (cats) {
+                        if (cats.isEmpty) {
+                          return const _HintCard(
+                            icon: Icons.auto_awesome_outlined,
+                            body:
+                                'Add notes and AI will automatically '
+                                'organise them into categories.',
+                          );
+                        }
+                        final top = _buildGroups(cats).take(6).toList();
+                        return LayoutBuilder(
+                          builder: (context, c) => GridView.builder(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: c.maxWidth >= 600 ? 3 : 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 1.2,
+                                ),
+                            itemCount: top.length,
+                            itemBuilder: (context, i) {
+                              final g = top[i];
+                              final label = intentLabel(g.intentType);
+                              return PastelCard(
+                                pastel: intentPastel(g.intentType),
+                                icon: intentIcon(g.intentType),
+                                title: label,
+                                caption: '${g.totalNotes} notes',
+                                onTap: () => context.push(
+                                  '/categories/t/${g.intentType}',
+                                  extra: label,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -252,6 +250,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
+class _HintCard extends StatelessWidget {
+  const _HintCard({
+    required this.icon,
+    this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String? title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            IconChip(icon, pastel: Pastel.lilac, size: 44),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (title != null) ...[
+                    Text(title!, style: tt.titleSmall),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(body, style: tt.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Recent-notes section ────────────────────────────────────────────────────
 
 class _RecentNotesSection extends ConsumerWidget {
@@ -260,40 +298,15 @@ class _RecentNotesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
     return notesAsync.when(
       loading: () => const _RecentNotesSkeleton(),
       error: (_, __) => const SizedBox.shrink(),
       data: (notes) {
         if (notes.isEmpty) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Icon(Icons.edit_note, color: cs.primary, size: 32),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('No notes yet',
-                            style: tt.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Add your first note — AI will organize it for you.',
-                          style: tt.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          return const _HintCard(
+            icon: Icons.edit_note_rounded,
+            title: 'No notes yet',
+            body: 'Add your first note — AI will organize it for you.',
           );
         }
 
@@ -312,8 +325,9 @@ class _RecentNotesSection extends ConsumerWidget {
             for (final note in recent)
               _RecentNoteCard(
                 note: note,
-                categoryName:
-                    note.categoryId != null ? catById[note.categoryId!] : null,
+                categoryName: note.categoryId != null
+                    ? catById[note.categoryId!]
+                    : null,
               ),
           ],
         );
@@ -331,50 +345,27 @@ class _RecentNoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final preview = (note.content ?? '').trim();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: NoteTile(
+        title: note.title,
+        content: note.content,
         onTap: () => context.push('/notes/${note.id}'),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                note.title,
-                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (preview.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  preview,
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    _timeAgo(note.createdAt),
-                    style: tt.bodySmall?.copyWith(color: cs.outline),
-                  ),
-                  const Spacer(),
-                  _StatusChip(
-                    status: note.organizationStatus,
-                    categoryName: categoryName,
-                  ),
-                ],
-              ),
-            ],
+        footer: [
+          Text(
+            _timeAgo(note.createdAt),
+            style: tt.labelSmall?.copyWith(
+              color: cs.outline,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+          const Spacer(),
+          _StatusChip(
+            status: note.organizationStatus,
+            categoryName: categoryName,
+          ),
+        ],
       ),
     );
   }
@@ -419,10 +410,11 @@ class _StatusChip extends StatelessWidget {
       case 'organized':
       default:
         if (categoryName != null && categoryName!.isNotEmpty) {
-          bg = cs.primaryContainer;
-          fg = cs.onPrimaryContainer;
-          leading = Icon(Icons.label_outline, size: 12, color: fg);
-          label = categoryName!;
+          return TagPill(
+            label: categoryName!,
+            pastel: Pastel.of(categoryName!),
+            icon: Icons.label_outline,
+          );
         } else {
           bg = cs.surfaceContainerHighest;
           fg = cs.onSurfaceVariant;
@@ -437,7 +429,7 @@ class _StatusChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(100),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -447,8 +439,10 @@ class _StatusChip extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: tt.labelSmall
-                    ?.copyWith(color: fg, fontWeight: FontWeight.w600),
+                style: tt.labelSmall?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -465,36 +459,10 @@ class _RecentNotesSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Column(
       children: List.generate(
         3,
-        (_) => Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                    height: 14,
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                    )),
-                const SizedBox(height: 8),
-                Container(
-                    height: 10,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                    )),
-              ],
-            ),
-          ),
-        ),
+        (_) => const NoteCardSkeleton(padding: EdgeInsets.only(bottom: 10)),
       ),
     );
   }
@@ -531,86 +499,11 @@ List<_CategoryGroup> _buildGroups(List<IntentCategoryResponse> cats) {
     final total = e.value.fold(0, (s, c) => s + c.noteCount);
     final ids = e.value.map((c) => c.id).toList();
     return _CategoryGroup(
-        intentType: e.key, totalNotes: total, categoryIds: ids);
-  }).toList()
-    ..sort((a, b) => b.totalNotes.compareTo(a.totalNotes));
-}
-
-String _intentLabel(String type) => switch (type) {
-      'todo' => 'Tasks',
-      'study' => 'Study',
-      'question' => 'Questions',
-      'communication' => 'Messages',
-      'reference' => 'Reference',
-      'idea' => 'Ideas',
-      'reminder' => 'Reminders',
-      'event' => 'Events',
-      _ => 'General',
-    };
-
-IconData _intentIcon(String type) => switch (type) {
-      'todo' => Icons.check_circle_outline,
-      'study' => Icons.school_outlined,
-      'question' => Icons.help_outline,
-      'communication' => Icons.chat_bubble_outline,
-      'reference' => Icons.bookmark_outline,
-      'idea' => Icons.lightbulb_outline,
-      'reminder' => Icons.alarm_outlined,
-      'event' => Icons.event_outlined,
-      _ => Icons.notes_outlined,
-    };
-
-// ── Widgets ──────────────────────────────────────────────────────────────────
-
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.group});
-  final _CategoryGroup group;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _intentLabel(group.intentType);
-    final icon = _intentIcon(group.intentType);
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return Card(
-      child: InkWell(
-        onTap: () => context.push(
-          '/categories/t/${group.intentType}',
-          extra: label,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: cs.primary),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '${group.totalNotes} notes',
-                style: tt.bodySmall?.copyWith(color: cs.outline),
-              ),
-            ],
-          ),
-        ),
-      ),
+      intentType: e.key,
+      totalNotes: total,
+      categoryIds: ids,
     );
-  }
+  }).toList()..sort((a, b) => b.totalNotes.compareTo(a.totalNotes));
 }
 
 class _StatCard extends StatelessWidget {
@@ -618,53 +511,47 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    required this.onTap,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+    return Semantics(
+      label: '$value $label',
+      button: onTap != null,
+      container: true,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(height: 10),
+                Text(
+                  value,
+                  style: tt.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
                 ),
-                child: Icon(icon, color: cs.primary, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: tt.headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    label,
-                    style: tt.bodySmall?.copyWith(color: cs.outline),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Icon(Icons.chevron_right, color: cs.outline),
-            ],
+                const SizedBox(height: 4),
+                Text(label, style: tt.bodySmall),
+              ],
+            ),
           ),
         ),
       ),

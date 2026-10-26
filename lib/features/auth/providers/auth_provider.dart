@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_exceptions.dart';
@@ -144,14 +145,9 @@ class AuthNotifier extends AsyncNotifier<UserResponse?> {
   }
 
   /// Uploads/replaces the profile picture from a local file.
-  Future<void> uploadAvatar({
-    required String filePath,
-    required String filename,
-  }) async {
-    final user = await ref.read(authRepositoryProvider).uploadAvatar(
-          filePath: filePath,
-          filename: filename,
-        );
+  Future<void> uploadAvatar(MultipartFile file) async {
+    final user =
+        await ref.read(authRepositoryProvider).uploadAvatar(file: file);
     state = AsyncData(user);
   }
 

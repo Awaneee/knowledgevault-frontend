@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/ambient.dart';
 import '../../data/models/attachment_response.dart';
 import '../../providers/attachments_provider.dart';
 
@@ -39,16 +41,43 @@ class _AttachmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Icons.insert_drive_file_outlined),
-      title: Text(
-        attachment.filename,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    final tt = Theme.of(context).textTheme;
+    final type = attachment.fileType.toUpperCase();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              IconChip(
+                type.contains('PDF')
+                    ? Icons.picture_as_pdf_outlined
+                    : type.contains('PNG') || type.contains('JP')
+                    ? Icons.image_outlined
+                    : Icons.insert_drive_file_outlined,
+                pastel: Pastel.of(type),
+                size: 40,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      attachment.filename,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.titleSmall,
+                    ),
+                    Text(type, style: tt.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      subtitle: Text(attachment.fileType.toUpperCase()),
-      dense: true,
-      contentPadding: EdgeInsets.zero,
     );
   }
 }

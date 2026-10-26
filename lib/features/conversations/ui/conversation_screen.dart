@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ambient.dart';
+import '../../ask/ui/ask_screen.dart' show PromptBar;
 import '../../ask/ui/widgets/answer_bubble.dart' show mdStyleFor;
 import '../data/conversations_repository.dart';
 import '../data/models/conversation_message.dart';
@@ -39,7 +41,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     return detailAsync.when(
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
@@ -61,8 +63,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   Widget _buildChat(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_sessionTitle ?? 'Conversation',
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          _sessionTitle ?? 'Conversation',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
       body: Column(
         children: [
@@ -81,12 +86,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     },
                   ),
           ),
-          const Divider(height: 1),
-          _InputBar(
-            controller: _ctrl,
-            loading: _loading,
-            onSubmit: _send,
-          ),
+          _InputBar(controller: _ctrl, loading: _loading, onSubmit: _send),
         ],
       ),
     );
@@ -127,7 +127,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         setState(() {
           _messages.add(assistantMsg);
           _loading = false;
-          _sessionTitle ??= text.length > 60 ? '${text.substring(0, 57)}…' : text;
+          _sessionTitle ??= text.length > 60
+              ? '${text.substring(0, 57)}…'
+              : text;
         });
         _scrollToBottom();
         // Refresh the sessions list so title/count updates.
@@ -169,48 +171,47 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.isUser;
     final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bubbleColor = isUser
-        ? AppColors.userBubble
-        : (isDark ? AppColors.assistantBubbleDark : AppColors.assistantBubble);
-    final textColor = isUser
-        ? AppColors.userBubbleText
-        : scheme.onSurface;
+    final bubbleColor = isUser ? scheme.primary : AppTheme.cardColor(scheme);
+    final textColor = isUser ? scheme.onPrimary : scheme.onSurface;
 
     final citations = message.citations ?? [];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: scheme.primaryContainer,
-              child: Icon(Icons.auto_awesome,
-                  size: 14, color: scheme.onPrimaryContainer),
-            ),
+            const SparkleOrb(size: 28),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: bubbleColor,
+                    border: isUser
+                        ? null
+                        : Border.all(
+                            color: scheme.outlineVariant.withValues(alpha: 0.6),
+                          ),
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(18),
-                      topRight: const Radius.circular(18),
-                      bottomLeft: Radius.circular(isUser ? 18 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 18),
+                      topLeft: const Radius.circular(22),
+                      topRight: const Radius.circular(22),
+                      bottomLeft: Radius.circular(isUser ? 22 : 6),
+                      bottomRight: Radius.circular(isUser ? 6 : 22),
                     ),
                   ),
                   child: isUser
@@ -223,9 +224,9 @@ class _MessageBubble extends StatelessWidget {
                           selectable: true,
                           styleSheet: mdStyleFor(context).copyWith(
                             p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: textColor,
-                                  height: 1.4,
-                                ),
+                              color: textColor,
+                              height: 1.4,
+                            ),
                           ),
                         ),
                 ),
@@ -253,12 +254,15 @@ class _CitationRow extends StatelessWidget {
     return Wrap(
       spacing: 4,
       children: citations.take(3).map((c) {
-        final title = (c as Map<String, dynamic>)['note_title'] as String? ?? 'Note';
+        final title =
+            (c as Map<String, dynamic>)['note_title'] as String? ?? 'Note';
         return Chip(
-          label: Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11)),
+          label: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11),
+          ),
           avatar: Icon(Icons.link, size: 12, color: scheme.primary),
           padding: EdgeInsets.zero,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -280,17 +284,12 @@ class _TypingIndicator extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: scheme.primaryContainer,
-            child: Icon(Icons.auto_awesome,
-                size: 14, color: scheme.onPrimaryContainer),
-          ),
+          const SparkleOrb(size: 28),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
+              color: AppTheme.cardColor(scheme),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(18),
                 topRight: Radius.circular(18),
@@ -326,36 +325,14 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                maxLines: 4,
-                minLines: 1,
-                enabled: !loading,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSubmit(),
-                decoration: const InputDecoration(
-                  hintText: 'Continue the conversation…',
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            loading
-                ? const SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  )
-                : IconButton.filled(
-                    icon: const Icon(Icons.send),
-                    onPressed: onSubmit,
-                  ),
-          ],
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: PromptBar(
+          controller: controller,
+          loading: loading,
+          onSubmit: onSubmit,
+          hintText: 'Continue the conversation…',
         ),
       ),
     );
@@ -368,22 +345,32 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.chat_bubble_outline,
-              size: 48, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(height: 12),
-          Text('Start the conversation',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  )),
-          const SizedBox(height: 4),
-          Text('Your AI assistant remembers the full chat history',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  )),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const HaloOrb(
+              size: 180,
+              child: Icon(Icons.forum_outlined, size: 36, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            const TwoToneTitle(
+              'Start the',
+              'conversation',
+              textAlign: TextAlign.center,
+              size: 28,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Your AI assistant remembers the full chat history',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/extensions/platform_file_ext.dart';
 import '../../data/attachments_repository.dart';
 import '../../providers/attachments_provider.dart';
 
@@ -22,10 +24,11 @@ class _UploadButtonState extends ConsumerState<UploadButton> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'txt', 'docx', 'png', 'jpg', 'jpeg'],
+      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
-    if (file.path == null) return;
+    if (!file.isReadable) return;
 
     setState(() {
       _uploading = true;
@@ -35,8 +38,7 @@ class _UploadButtonState extends ConsumerState<UploadButton> {
     try {
       await ref.read(attachmentsRepositoryProvider).upload(
             noteId: widget.noteId,
-            filePath: file.path!,
-            filename: file.name,
+            file: await file.toMultipart(),
             onProgress: (sent, total) {
               if (total > 0 && mounted) {
                 setState(() => _progress = sent / total);
@@ -63,18 +65,26 @@ class _UploadButtonState extends ConsumerState<UploadButton> {
   @override
   Widget build(BuildContext context) {
     if (_uploading) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Uploading…'),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(value: _progress),
-        ],
+      return SizedBox(
+        width: 140,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Uploading…', style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: LinearProgressIndicator(value: _progress, minHeight: 6),
+            ),
+          ],
+        ),
       );
     }
-    return TextButton.icon(
-      icon: const Icon(Icons.attach_file),
+    return OutlinedButton.icon(
+      icon: const Icon(Icons.attach_file_rounded, size: 18),
       label: const Text('Add attachment'),
+      style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
       onPressed: _pick,
     );
   }

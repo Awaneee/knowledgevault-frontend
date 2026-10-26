@@ -19,6 +19,20 @@
 
 ---
 
+## Screenshots
+
+Captured by the Playwright suite in [`e2e/`](e2e), driving the web build against the deployed backend.
+
+| Sign in | Dashboard | Notes |
+|---|---|---|
+| ![Sign in](screenshots/01-login.png) | ![Dashboard](screenshots/10-dashboard.png) | ![Notes list](screenshots/15-notes-list.png) |
+| **Note detail** | **Categories** | **Ask AI** |
+| ![Note detail](screenshots/14-note-detail.png) | ![Categories](screenshots/30-categories.png) | ![Ask AI answer with sources](screenshots/41-ask-answer.png) |
+| **Chat** | **Settings** | **Dark mode** |
+| ![Chat](screenshots/52-chat-reply.png) | ![Settings](screenshots/60-settings.png) | ![Dark mode dashboard](screenshots/71-dark-dashboard.png) |
+
+---
+
 ## Screens
 
 | | |
@@ -78,6 +92,27 @@ flutter build apk --release --dart-define=FLAVOR=prod
 ```
 
 The signing config in `android/app/build.gradle.kts` falls back to debug keys for convenience — swap in a real keystore before publishing.
+
+**Web** (also what the end-to-end tests drive):
+
+```bash
+flutter build web --release        # → build/web
+```
+
+The offline cache uses drift's WASM SQLite on the web; `web/sqlite3.wasm` and `web/drift_worker.js` must match the `sqlite3` / `drift` versions in `pubspec.lock` — re-download both when upgrading those packages.
+
+### End-to-end tests (Playwright)
+
+`e2e/` drives the web build in headless Chromium against a running backend and walks every feature — sign-in/registration, dashboard, notes (create, import, attach, re-categorise, delete), search, AI categories, Ask AI, chats, settings, profile, dark mode and the wide (rail) layout — saving a screenshot of each step to `screenshots/`.
+
+```bash
+# backend on http://localhost:8000, then:
+flutter build web --release
+cd e2e && npm install && npx playwright install chromium
+npx playwright test               # HTML report in e2e/report/
+```
+
+Global setup registers a fresh user, seeds notes through the API, waits for the AI worker to organise them and signs in once (the API allows 5 logins a minute). If Chromium is missing system libraries and you can't `apt install` them, point `PW_LIB_DIR` at a folder containing them.
 
 ---
 

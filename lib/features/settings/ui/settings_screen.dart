@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/backfill_repository.dart';
@@ -23,108 +24,134 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final healthAsync = ref.watch(_healthProvider);
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          // ── Appearance ───────────────────────────────────────────────
-          const _SectionHeader('Appearance'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  icon: Icon(Icons.brightness_auto),
-                  label: Text('System'),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: Icon(Icons.light_mode),
-                  label: Text('Light'),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: Icon(Icons.dark_mode),
-                  label: Text('Dark'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
+            children: [
+              // ── Appearance ─────────────────────────────────────────────
+              const _SectionHeader('Appearance'),
+              SegmentedButton<ThemeMode>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.brightness_auto_outlined),
+                    label: Text('System'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_outlined),
+                    label: Text('Light'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_outlined),
+                    label: Text('Dark'),
+                  ),
+                ],
+                selected: {themeMode},
+                onSelectionChanged: (modes) {
+                  if (modes.isNotEmpty) {
+                    ref.read(themeModeProvider.notifier).setMode(modes.first);
+                  }
+                },
+              ),
+
+              // ── Account ────────────────────────────────────────────────
+              if (user != null) ...[
+                const _SectionHeader('Account'),
+                _Group(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.alternate_email_rounded),
+                      title: const Text('Email'),
+                      subtitle: Text(user.email),
+                    ),
+                  ],
                 ),
               ],
-              selected: {themeMode},
-              onSelectionChanged: (modes) {
-                if (modes.isNotEmpty) {
-                  ref.read(themeModeProvider.notifier).setMode(modes.first);
-                }
-              },
-            ),
-          ),
 
-          // ── Account ──────────────────────────────────────────────────
-          const Divider(),
-          const _SectionHeader('Account'),
-          if (user != null)
-            ListTile(
-              title: const Text('Email'),
-              trailing: Text(
-                user.email,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-              ),
-            ),
-
-          // ── AI Features ──────────────────────────────────────────────
-          const Divider(),
-          const _SectionHeader('AI Features'),
-          ListTile(
-            title: const Text('Organise my notes'),
-            subtitle: const Text(
-              'Run AI intent detection on notes without a category.',
-            ),
-            trailing: OutlinedButton(
-              onPressed: () => _runBackfill(context, ref),
-              child: const Text('Run'),
-            ),
-          ),
-
-          // ── Connection ───────────────────────────────────────────────
-          const Divider(),
-          const _SectionHeader('Connection'),
-          ListTile(
-            title: const Text('Server status'),
-            trailing: healthAsync.when(
-              loading: () => const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              error: (_, __) => const _StatusDot(ServerHealth.unreachable),
-              data: (h) => Row(
-                mainAxisSize: MainAxisSize.min,
+              // ── AI Features ────────────────────────────────────────────
+              const _SectionHeader('AI Features'),
+              _Group(
                 children: [
-                  _StatusDot(h),
-                  const SizedBox(width: 6),
-                  Text(
-                    switch (h) {
-                      ServerHealth.ok => 'Online',
-                      ServerHealth.degraded => 'Degraded',
-                      ServerHealth.unreachable => 'Offline',
-                    },
-                    style: Theme.of(context).textTheme.bodySmall,
+                  ListTile(
+                    leading: const Icon(Icons.auto_awesome_outlined),
+                    title: const Text('Organise my notes'),
+                    subtitle: const Text(
+                      'Run AI intent detection on notes without a category.',
+                    ),
+                    trailing: OutlinedButton(
+                      onPressed: () => _runBackfill(context, ref),
+                      child: const Text('Run'),
+                    ),
                   ),
                 ],
               ),
-            ),
-            onTap: () => ref.invalidate(_healthProvider),
-          ),
 
-          // ── Logout ───────────────────────────────────────────────────
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Log out'),
-            onTap: () => ref.read(authProvider.notifier).logout(),
+              // ── Connection ─────────────────────────────────────────────
+              const _SectionHeader('Connection'),
+              _Group(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.cloud_outlined),
+                    title: const Text('Server status'),
+                    trailing: healthAsync.when(
+                      loading: () => const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      error: (_, __) =>
+                          const _StatusDot(ServerHealth.unreachable),
+                      data: (h) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainer,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _StatusDot(h),
+                            const SizedBox(width: 6),
+                            Text(switch (h) {
+                              ServerHealth.ok => 'Online',
+                              ServerHealth.degraded => 'Degraded',
+                              ServerHealth.unreachable => 'Offline',
+                            }, style: Theme.of(context).textTheme.labelMedium),
+                          ],
+                        ),
+                      ),
+                    ),
+                    onTap: () => ref.invalidate(_healthProvider),
+                  ),
+                ],
+              ),
+
+              // ── Logout ─────────────────────────────────────────────────
+              const SizedBox(height: 24),
+              _Group(
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.logout_rounded, color: cs.error),
+                    title: Text('Log out', style: TextStyle(color: cs.error)),
+                    onTap: () => ref.read(authProvider.notifier).logout(),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -202,16 +229,17 @@ class SettingsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Still processing in the background — check back in a minute.'),
+              'Still processing in the background — check back in a minute.',
+            ),
           ),
         );
       }
     } catch (e) {
       if (context.mounted) {
         if (Navigator.canPop(context)) Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -225,14 +253,31 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(4, 24, 4, 10),
       child: Text(
-        title,
+        title.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          letterSpacing: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+/// Rounded card that holds a group of settings rows.
+class _Group extends StatelessWidget {
+  const _Group({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Column(children: children),
       ),
     );
   }
@@ -246,9 +291,9 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (health) {
-      ServerHealth.ok => Colors.green,
-      ServerHealth.degraded => Colors.orange,
-      ServerHealth.unreachable => Colors.red,
+      ServerHealth.ok => AppColors.success,
+      ServerHealth.degraded => AppColors.warning,
+      ServerHealth.unreachable => AppColors.danger,
     };
     return Container(
       width: 10,

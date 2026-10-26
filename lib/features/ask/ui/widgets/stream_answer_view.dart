@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/ambient.dart';
 import '../../data/models/citation.dart';
 import 'answer_bubble.dart'
     show CitationSources, linkifyCitations, mdStyleFor, openCitationLink;
@@ -33,21 +35,20 @@ class StreamAnswerView extends StatelessWidget {
     final cs = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
+      padding: const EdgeInsets.fromLTRB(18, 14, 10, 18),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.cardColor(cs),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, size: 16, color: cs.primary),
-              const SizedBox(width: 6),
-              Text('Answer',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
+              const SparkleOrb(size: 26),
+              const SizedBox(width: 10),
+              Text('Answer', style: theme.textTheme.titleSmall),
               const Spacer(),
               if (isStreaming && onStop != null)
                 IconButton(
@@ -84,8 +85,9 @@ class StreamAnswerView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: MarkdownBody(
-                data: linkifyCitations(
-                    text, {for (final c in citations) c.ref}),
+                data: linkifyCitations(text, {
+                  for (final c in citations) c.ref,
+                }),
                 selectable: true,
                 styleSheet: mdStyleFor(context),
                 onTapLink: (text, href, title) =>

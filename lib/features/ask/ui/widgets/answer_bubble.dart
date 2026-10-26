@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/ambient.dart';
 import '../../data/models/ask_response.dart';
 import '../../data/models/citation.dart';
 import 'citation_card.dart';
@@ -12,11 +14,7 @@ import 'citation_card.dart';
 /// via [MarkdownBody]. Inline `[N]` citation refs are rewritten to markdown
 /// links (`[\[N\]](cite://N)`) so they become tappable.
 class AnswerBubble extends StatelessWidget {
-  const AnswerBubble({
-    super.key,
-    required this.response,
-    this.onRegenerate,
-  });
+  const AnswerBubble({super.key, required this.response, this.onRegenerate});
 
   final AskResponse response;
   final VoidCallback? onRegenerate;
@@ -29,21 +27,20 @@ class AnswerBubble extends StatelessWidget {
     final markdown = linkifyCitations(response.answer, citationRefs);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
+      padding: const EdgeInsets.fromLTRB(18, 14, 10, 18),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.cardColor(cs),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, size: 16, color: cs.primary),
-              const SizedBox(width: 6),
-              Text('Answer',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
+              const SparkleOrb(size: 26),
+              const SizedBox(width: 10),
+              Text('Answer', style: theme.textTheme.titleSmall),
               const Spacer(),
               if (onRegenerate != null)
                 IconButton(
@@ -80,7 +77,9 @@ class AnswerBubble extends StatelessWidget {
   }
 
   static Future<void> _copyToClipboard(
-      BuildContext context, String text) async {
+    BuildContext context,
+    String text,
+  ) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +106,10 @@ String linkifyCitations(String answer, Set<int> validRefs) {
 
 /// Finds the citation for a `cite://N` link href and opens its sheet.
 void openCitationLink(
-    BuildContext context, String? href, List<Citation> citations) {
+  BuildContext context,
+  String? href,
+  List<Citation> citations,
+) {
   if (href == null || !href.startsWith('cite://')) return;
   final n = int.tryParse(href.substring(7));
   for (final c in citations) {
@@ -131,13 +133,15 @@ class CitationSources extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Divider(color: cs.outlineVariant),
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: Text('Sources',
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: cs.onSurfaceVariant)),
+          child: Text(
+            'Sources',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
         ),
         const SizedBox(height: 6),
         Padding(
@@ -146,12 +150,22 @@ class CitationSources extends StatelessWidget {
             spacing: 6,
             runSpacing: 4,
             children: citations
-                .map((c) => ActionChip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text('[${c.ref}] ${c.noteTitle}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      onPressed: () => showCitationSheet(context, c),
-                    ))
+                .map(
+                  (c) => ActionChip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: Icon(
+                      Icons.description_outlined,
+                      size: 14,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    label: Text(
+                      '[${c.ref}] ${c.noteTitle}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => showCitationSheet(context, c),
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -213,15 +227,17 @@ class DegradedAnswerView extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_outlined,
-                  color: Theme.of(context).colorScheme.onErrorContainer),
+              Icon(
+                Icons.warning_amber_outlined,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'AI answer unavailable — showing relevant notes instead.',
                   style: TextStyle(
-                      color:
-                          Theme.of(context).colorScheme.onErrorContainer),
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
                 ),
               ),
             ],
@@ -239,8 +255,10 @@ class DegradedAnswerView extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(chunk.title,
-                            style: Theme.of(context).textTheme.titleSmall),
+                        child: Text(
+                          chunk.title,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
                       ),
                       Text(
                         chunk.score.toStringAsFixed(2),
@@ -249,10 +267,12 @@ class DegradedAnswerView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(chunk.preview,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    chunk.preview,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
